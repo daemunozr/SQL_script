@@ -37,7 +37,7 @@ select clientes.nombre , --solucion mala
 (select sum(transacciones.monto )
 from cuentas
 join transacciones on cuentas.id_cuenta = transacciones.id_cuenta
-and transacciones.tipo = 'DEPOSITO') as total_depositos 
+and transacciones.tipo = 'DEPOSITO') as total_depositos
 from clientes;
 
 --subtable temporal
@@ -119,47 +119,6 @@ join cuentas on cuentas.id_cliente = clientes.id_cliente
 where cuentas.saldo > (select avg(saldo) from cuentas);
 
 /*
-tabla despues de transacciones realizadas
-*/
-
---- query with two common table expresion (cte)
-with 
-tmp_deposito as 
-(
-select transacciones.id_cuenta,
-sum(transacciones.monto) as total_depositos
-from transacciones
-where transacciones.tipo = 'DEPOSITO'
-group by transacciones.id_cuenta
-),
-tmp_retiro as
-(
-select transacciones.id_cuenta,
-sum(transacciones.monto) as total_retiros
-from transacciones
-where transacciones.tipo = 'RETIRO'
-group by transacciones.id_cuenta
-)
-select clientes.nombre,
-cuentas.saldo + nvl(tmp_deposito.total_depositos, 0) - nvl(tmp_retiro.total_retiros, 0) as saldo
-from clientes
-left join cuentas on cuentas.id_cliente = clientes.id_cliente
-left join tmp_deposito on cuentas.id_cuenta = tmp_deposito.id_cuenta 
-left join tmp_retiro on cuentas.id_cuenta = tmp_retiro.id_cuenta;
-
---- query with SUM optimize
-select clientes.nombre, cuentas.saldo + resumen.mov_total as saldo_actual
-from clientes
-left join cuentas on clientes.id_cliente = cuentas.id_cliente
-left join (
-select transacciones.id_cuenta, nvl(sum(
-case when transacciones.tipo = 'DEPOSITO' then transacciones.monto
-when transacciones.tipo = 'RETIRO' then -transacciones.monto
-end) ,0) as mov_total
-from transacciones
-group by transacciones.id_cuenta) resumen on resumen.id_cuenta = cuentas.id_cuenta;
-
-/*
 Ejercicio 4 — Subconsulta en WHERE con IN
 Enunciado: El banco necesita identificar clientes que han realizado retiros.
 
@@ -225,8 +184,10 @@ end) ,0) as mov_total
 from transacciones
 group by transacciones.id_cuenta) resumen
 join cuentas on cuentas.id_cuenta = resumen.id_cuenta
-join clientes on clientes.id_cliente = cuentas.id_cuenta;
+join clientes on clientes.id_cliente = cuentas.id_cliente
+where resumen.mov_total > 2000;
 
+--- sunquery
 select transacciones.id_cuenta, nvl(sum(
 case when transacciones.tipo = 'DEPOSITO' then transacciones.monto
 when transacciones.tipo = 'RETIRO' then 0
@@ -249,7 +210,21 @@ Usar una subconsulta en el FROM para calcular los retiros por cuenta.
 Luego relacionarla con clientes mediante JOIN.
 */
 
+select clientes.nombre, retiros
+from(
+select cuentas.id_cliente, nvl(sum(transacciones.monto),0) as retiros
+from cuentas
+left join transacciones on cuentas.id_cuenta = transacciones.id_cuenta
+and transacciones.tipo = 'RETIRO'
+group by cuentas.id_cliente) resumen
+left join clientes on clientes.id_cliente = resumen.id_cliente;
 
+--- subquery
+select cuentas.id_cliente, nvl(sum(transacciones.monto),0) as retiros
+from cuentas
+left join transacciones on cuentas.id_cuenta = transacciones.id_cuenta 
+and transacciones.tipo = 'RETIRO'
+group by cuentas.id_cliente;
 
 /*
 Ejercicio 8 — Subconsulta correlacionada
@@ -263,6 +238,19 @@ Incluir solo aquellas donde el saldo actual sea mayor que el total de dinero ret
 Debes usar una subconsulta correlacionada en el WHERE.
 */
 
+select cuentas.id_cliente
+from cuentas
+where saldo > 
+(select nvl(sum(transacciones.monto),0)
+from transacciones
+where cuentas.id_cuenta = transacciones.id_cuenta 
+and transacciones.tipo = 'RETIRO');
+
+--- subquery 1 no correlacionada
+select saldo >  nvl(sum(transacciones.monto),0)
+from transacciones
+join cuentas on cuentas.id_cuenta = transacciones.id_cuenta 
+and transacciones.tipo = 'RETIRO';
 
 /*
 Ejercicio 9 — Subconsulta en SELECT (acumulación)
@@ -275,4 +263,53 @@ Calcular la suma de los saldos de todas sus cuentas.
 
 Debes usar una subconsulta dentro del SELECT.
 */
+
+select clientes.nombre,
+(select sum(cuentas.saldo) + nvl(
+sum(
+case
+when transacciones.tipo = 'DEPOSITO' then transacciones.monto
+when transacciones.tipo = 'RETIRO' then -transacciones.monto
+end), 0)
+from cuentas
+left join transacciones on cuentas.id_cuenta = transacciones.id_cuenta
+where cuentas.id_cliente = clientes.id_cliente) as 'total cuenta'
+from clientes;
+
+--- query with two common table expresion (cte)
+with 
+tmp_deposito as 
+(
+select transacciones.id_cuenta,
+sum(transacciones.monto) as total_depositos
+from transacciones
+where transacciones.tipo = 'DEPOSITO'
+group by transacciones.id_cuenta
+),
+tmp_retiro as
+(
+select transacciones.id_cuenta,
+sum(transacciones.monto) as total_retiros
+from transacciones
+where transacciones.tipo = 'RETIRO'
+group by transacciones.id_cuenta
+)
+select clientes.nombre,
+cuentas.saldo + nvl(tmp_deposito.total_depositos, 0) - nvl(tmp_retiro.total_retiros, 0) as saldo
+from clientes
+left join cuentas on cuentas.id_cliente = clientes.id_cliente
+left join tmp_deposito on cuentas.id_cuenta = tmp_deposito.id_cuenta
+left join tmp_retiro on cuentas.id_cuenta = tmp_retiro.id_cuenta;
+
+--- query with SUM optimize
+select clientes.nombre, cuentas.saldo + resumen.mov_total as saldo_actual
+from clientes
+left join cuentas on clientes.id_cliente = cuentas.id_cliente
+left join (
+select transacciones.id_cuenta, nvl(sum(
+case when transacciones.tipo = 'DEPOSITO' then transacciones.monto
+when transacciones.tipo = 'RETIRO' then -transacciones.monto
+end) ,0) as mov_total
+from transacciones
+group by transacciones.id_cuenta) resumen on resumen.id_cuenta = cuentas.id_cuenta;
 
