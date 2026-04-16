@@ -90,5 +90,5 @@ SELECT
         WHERE
             arriendo_moto.placa = motocicleta.placa AND (TO_CHAR(SYSDATE, 'YYYY') = TO_CHAR(arriendo_moto.fecha_ini_arriendo, 'YYYY'))) >= 2);
             
-SELECT * FROM HIST_ARRIENDO_ANUAL_MOTO;
+--- SELECT * FROM HIST_ARRIENDO_ANUAL_MOTO;
     
