@@ -1,23 +1,4 @@
-
-DROP TABLESPACE data_aprendiendo 
-INCLUDING CONTENTS 
-AND DATAFILES 
-CASCADE CONSTRAINTS;
-
-DROP TABLESPACE tmp_aprendiendo 
-INCLUDING CONTENTS 
-AND DATAFILES 
-CASCADE CONSTRAINTS;
-
-DROP TABLESPACE data_reporte_sql 
-INCLUDING CONTENTS 
-AND DATAFILES 
-CASCADE CONSTRAINTS;
-
-DROP TABLESPACE tmp_reporte_sql 
-INCLUDING CONTENTS 
-AND DATAFILES 
-CASCADE CONSTRAINTS;
+--- Daniel Muñoz Prueba 2 Seccion 013V
 
 --- REQ 1.1
 ALTER SESSION SET CONTAINER = XEPDB1;
@@ -125,23 +106,25 @@ SELECT
     proyecto.nombre AS NOMBRE_PROYECTO,
     departamento.nombre AS DEPARTAMENTO,
     persONa.apellido_pat || ' ' || persONa.apellido_mat || ', '|| persONa.nombres AS JEFE_PROYECTO,
-    empleado_ASignado.nombre AS EMPLEADO_ASIGNADO,
-    empleado_ASignado.rol_en_proyecto,
-    empleado_ASignado.horAS_semanales,
-    SUM(empleado_ASignado.horAS_semanales) OVER (PARTITION BY proyecto.codigo) AS total_horAS
+    empleado_asignado.nombre AS EMPLEADO_ASIGNADO,
+    empleado_asignado.rol_en_proyecto,
+    empleado_aSignado.horAS_semanales,
+    SUM(empleado_asignado.horaS_semanales) OVER (PARTITION BY proyecto.codigo) AS total_horas
 FROM proyecto
 JOIN departamento ON proyecto.codigo_departamento = departamento.codigo
 JOIN empleado ON empleado.codigo = proyecto.codigo_jefe_proyecto
 JOIN persONa ON persONa.rut = empleado.rut_persONa
 JOIN empleado_ASignado  ON empleado_ASignado.codigo_proyecto = proyecto.codigo
 WHERE proyecto.estado = 'EN_CURSO'
-ORDER BY proyecto.codigo DESC, total_horAS ASC
+ORDER BY proyecto.nombre ASC, total_horas ASC
 WITH READ ONLY;
 
---- REQ 4
+--- REQ 4.1
 
 CREATE INDEX idx_tarea_estado_prioridad 
 ON tarea(estado, prioridad);
+
+--- REQ 4.2
 
 CREATE INDEX idx_asistencia_fecha_empleado 
 ON asistencia(fecha, codigo_empleado);
