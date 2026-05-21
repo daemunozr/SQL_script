@@ -87,3 +87,45 @@ GRANT CREATE SESSION        TO rol_admin;
 GRANT CREATE SYNONYM        TO rol_admin;
 
 --- REQ 2
+
+
+--- REQ 3
+
+--- CREATE OR REPLACE VIEW VIEW_EMPLEADOS_PROYECTOS_VIGENTES AS
+WITH empleado_asignado as (
+    SELECT
+        proyecto.codigo as codigo_proyecto,
+        persona.apellido_pat || ' ' || persona.apellido_mat || ', '|| persona.nombres AS nombre
+    FROM proyecto
+    JOIN empleado on empleado.codigo_jefatura = proyecto.codigo_jefe_proyecto
+    JOIN persona on persona.rut = empleado.rut_persona
+);
+SELECT 
+    proyecto.codigo AS CODIGO_PROYECTO,
+    proyecto.nombre AS NOMBRE_PROYECTO,
+    departamento.nombre AS DEPARTAMENTO,
+    persona.apellido_pat || ' ' || persona.apellido_mat || ', '|| persona.nombres AS JEFE_PROYECTO
+  ---  empleado_asignado.nombre as EMPLEADO_ASIGNADO
+    
+--     AS EMPLEADO_ASIGNADO,
+--     AS ROL_EN_PROYECTO
+    FROM proyecto
+    JOIN departamento ON proyecto.codigo_departamento = proyecto.codigo
+    JOIN empleado ON empleado.codigo = proyecto.codigo_jefe_proyecto
+    JOIN persona ON persona.rut = empleado.rut_persona
+  ---  JOIN empleado_asignado ON empleado_asignado.codigo_proyecto = proyecto.codigo
+    WHERE proyecto.estado = 'EN_CURSO';
+  
+SELECT * 
+FROM PROYECTO 
+JOIN departamento ON proyecto.codigo_departamento = proyecto.codigo
+WHERE ESTADO = 'EN_CURSO';
+    
+select * from empleado;
+
+select * from proyecto;
+
+select * from persona;
+
+select * from tipo_empleado;
+
