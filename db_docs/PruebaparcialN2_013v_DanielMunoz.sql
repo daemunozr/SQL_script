@@ -56,76 +56,92 @@ TO reporte_sql;
 
 --- REQ 1.2
 
-GRANT SELECT ON aprendiendo_sql.empleado_capacitacion   TO reporte_sql;
-GRANT SELECT ON aprendiendo_sql.capacitacion            TO reporte_sql;
+GRANT SELECT ON aprendiendo_sql.empleado_capacitaciON   TO reporte_sql;
+GRANT SELECT ON aprendiendo_sql.capacitaciON            TO reporte_sql;
 GRANT SELECT ON aprendiendo_sql.empleado_proyecto       TO reporte_sql;
 GRANT SELECT ON aprendiendo_sql.detalle_sueldo          TO reporte_sql;
 GRANT SELECT ON aprendiendo_sql.empleado                TO reporte_sql;
 
-GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.empleado_capacitacion TO reporte_sql; 
-GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.capacitacion TO reporte_sql; 
-GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.telefono TO reporte_sql; 
-GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.contacto_emergencia TO reporte_sql; 
+GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.empleado_capacitaciON TO reporte_sql; 
+GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.capacitaciON TO reporte_sql; 
+GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.telefONo TO reporte_sql; 
+GRANT UPDATE, INSERT, DELETE ON aprendiendo_sql.cONtacto_emergencia TO reporte_sql; 
 
 
 --- REQ 1.3
 
 CREATE ROLE rol_admin;
 
-GRANT CREATE SESSION        TO rol_admin;
-GRANT CREATE TABLE          TO rol_admin;
-GRANT DELETE ON ALL_TABLES  TO rol_admin;
-GRANT UPDATE ON All_TABLES  TO rol_admin;
-GRANT CREATE SEQUENCE       TO rol_admin;
-GRANT CREATE VIEW           TO rol_admin;
-GRANT CREATE INDEXTYPE      TO rol_admin;
-GRANT CREATE PUBLIC SYNONYM TO rol_admin;
+GRANT 
+    CREATE SESSION,
+    CREATE TABLE,
+    CREATE SEQUENCE,
+    CREATE VIEW,
+    CREATE INDEXTYPE,
+    CREATE PUBLIC SYNONYM
+TO rol_admin;
+
+GRANT 
+    DELETE, 
+    UPDATE 
+ON ALL_TABLES  TO rol_admin;
 
 CREATE ROLE rol_reportes;
 
-GRANT CREATE SESSION        TO rol_admin;
-GRANT CREATE SYNONYM        TO rol_admin;
+GRANT 
+    CREATE SESSION,
+    CREATE SYNONYM
+TO rol_admin;
 
 --- REQ 2
 
+UPDATE empleado
+SET salario_bruto = ROUND(
+  salario_bruto *
+  CASE
+    WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, fecha_contrato)/12) >= 20 THEN 1.12
+    WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, fecha_contrato)/12) BETWEEN 10 AND 19 THEN 1.08
+    WHEN TRUNC(MONTHS_BETWEEN(SYSDATE, fecha_contrato)/12) BETWEEN 5 AND 9 THEN 1.05
+    ELSE 1.02
+  END
+);
 
 --- REQ 3
 
---- CREATE OR REPLACE VIEW VIEW_EMPLEADOS_PROYECTOS_VIGENTES AS
-WITH empleado_asignado as (
+
+CREATE OR REPLACE VIEW VIEW_EMPLEADOS_PROYECTOS_VIGENTES AS
+WITH empleado_asignado AS (
     SELECT
-        proyecto.codigo as codigo_proyecto,
-        persona.apellido_pat || ' ' || persona.apellido_mat || ', '|| persona.nombres AS nombre
-    FROM proyecto
-    JOIN empleado on empleado.codigo_jefatura = proyecto.codigo_jefe_proyecto
-    JOIN persona on persona.rut = empleado.rut_persona
-);
+        empleado_proyecto.codigo_proyecto AS codigo_proyecto,
+        persONa.apellido_pat || ' ' || persONa.apellido_mat || ', '|| persONa.nombres AS nombre,
+        empleado_proyecto.rol_proyecto AS rol_en_proyecto,
+        empleado_proyecto.horAS_semanales AS horAS_semanales
+    FROM empleado_proyecto
+    JOIN empleado ON empleado.codigo = empleado_proyecto.codigo_empleado
+    JOIN persONa ON persONa.rut = empleado.rut_persONa
+)
 SELECT 
     proyecto.codigo AS CODIGO_PROYECTO,
     proyecto.nombre AS NOMBRE_PROYECTO,
     departamento.nombre AS DEPARTAMENTO,
-    persona.apellido_pat || ' ' || persona.apellido_mat || ', '|| persona.nombres AS JEFE_PROYECTO
-  ---  empleado_asignado.nombre as EMPLEADO_ASIGNADO
-    
---     AS EMPLEADO_ASIGNADO,
---     AS ROL_EN_PROYECTO
-    FROM proyecto
-    JOIN departamento ON proyecto.codigo_departamento = proyecto.codigo
-    JOIN empleado ON empleado.codigo = proyecto.codigo_jefe_proyecto
-    JOIN persona ON persona.rut = empleado.rut_persona
-  ---  JOIN empleado_asignado ON empleado_asignado.codigo_proyecto = proyecto.codigo
-    WHERE proyecto.estado = 'EN_CURSO';
-  
-SELECT * 
-FROM PROYECTO 
-JOIN departamento ON proyecto.codigo_departamento = proyecto.codigo
-WHERE ESTADO = 'EN_CURSO';
-    
-select * from empleado;
+    persONa.apellido_pat || ' ' || persONa.apellido_mat || ', '|| persONa.nombres AS JEFE_PROYECTO,
+    empleado_ASignado.nombre AS EMPLEADO_ASIGNADO,
+    empleado_ASignado.rol_en_proyecto,
+    empleado_ASignado.horAS_semanales,
+    SUM(empleado_ASignado.horAS_semanales) OVER (PARTITION BY proyecto.codigo) AS total_horAS
+FROM proyecto
+JOIN departamento ON proyecto.codigo_departamento = departamento.codigo
+JOIN empleado ON empleado.codigo = proyecto.codigo_jefe_proyecto
+JOIN persONa ON persONa.rut = empleado.rut_persONa
+JOIN empleado_ASignado  ON empleado_ASignado.codigo_proyecto = proyecto.codigo
+WHERE proyecto.estado = 'EN_CURSO'
+ORDER BY proyecto.codigo DESC, total_horAS ASC
+WITH READ ONLY;
 
-select * from proyecto;
+--- REQ 4
 
-select * from persona;
+CREATE INDEX idx_tarea_estado_prioridad 
+ON tarea(estado, prioridad);
 
-select * from tipo_empleado;
-
+CREATE INDEX idx_asistencia_fecha_empleado 
+ON asistencia(fecha, codigo_empleado);
